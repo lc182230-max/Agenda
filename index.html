@@ -49,7 +49,7 @@
         body {
             background-color: var(--bg-body);
             color: var(--text);
-            padding-bottom: 80px;
+            padding-bottom: 90px;
             transition: background 0.3s ease;
         }
 
@@ -105,6 +105,21 @@
             font-size: 0.9rem;
         }
 
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .checkbox-container input {
+            width: auto;
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+
         input, select {
             width: 100%;
             padding: 12px;
@@ -136,6 +151,24 @@
         button.btn-block:active {
             background-color: var(--primary-hover);
             transform: scale(0.98);
+        }
+
+        .btn-outline {
+            width: 100%;
+            background-color: transparent;
+            color: #00d2d3;
+            border: 2px solid #00d2d3;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        .btn-outline:active {
+            background-color: rgba(0, 210, 211, 0.1);
         }
 
         .time-slots-container {
@@ -256,37 +289,11 @@
             z-index: 100;
         }
 
-        .nav-item { padding: 10px 0; text-align: center; flex: 1; font-size: 0.65rem; color: #a4b0be; cursor: pointer; font-weight: 600; }
+        .nav-item { padding: 10px 0; text-align: center; flex: 1; font-size: 0.6rem; color: #a4b0be; cursor: pointer; font-weight: 600; }
         .nav-item.active { color: var(--primary); }
-        .nav-item icon { display: block; font-size: 1.2rem; margin-bottom: 2px; }
+        .nav-item icon { display: block; font-size: 1.1rem; margin-bottom: 2px; }
         
         .tip-box { background-color: #e3faef; border-left: 4px solid var(--success); padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px; color: #1e7e43; }
-
-        .voice-btn-float {
-            position: fixed;
-            bottom: 85px;
-            right: 20px;
-            width: 60px;
-            height: 60px;
-            background-color: var(--primary);
-            color: white;
-            border-radius: 50%;
-            border: none;
-            box-shadow: 0 4px 15px rgba(255, 107, 139, 0.4);
-            font-size: 1.6rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-        .voice-btn-float.listening { background-color: var(--success); animation: pulseVoz 1.2s infinite; }
-
-        @keyframes pulseVoz {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.12); }
-            100% { transform: scale(1); }
-        }
     </style>
 </head>
 <body class="theme-rosa">
@@ -297,13 +304,11 @@
         <h1>Estúdio Talita Linda 💅</h1>
     </header>
 
-    <button class="voice-btn-float" id="btn-voz-assistente" onclick="iniciarOuvinteVoz()">🎙️</button>
-
     <main>
         <!-- TELA 1: AGENDAR (Home) -->
         <section id="page-agenda" class="page active">
             <h2>Novo Agendamento</h2>
-            <div class="tip-box" id="feedback-voz-box">
+            <div class="tip-box">
                 💾 <strong>Armazenamento Local Ativo!</strong> Tudo é salvo no aparelho de forma 100% off-line automaticamente.
             </div>
             <div class="form-group">
@@ -314,7 +319,7 @@
                     <label>2. Escolha o Serviço</label>
                     <select id="select-servico" onchange="gerarBotoesHorario()" required></select>
 
-                    <label id="label-horarios" style="display:none; margin-top: 10px;">3. Horários Livres Calculados:</label>
+                    <label id="label-horarios" style="display:none; margin-top: 10px;">3. Horários Livres Calculados (30 em 30 min):</label>
                     <div class="time-slots-container" id="container-botoes-horarios"></div>
 
                     <label>4. Selecionar Cliente</label>
@@ -343,6 +348,7 @@
                     <input type="tel" id="tel-cliente" placeholder="Ex: (11) 99999-9999" required>
                     <button type="submit" class="btn-block" style="background-color: #2ed573;">Cadastrar Cliente</button>
                 </form>
+                <button type="button" class="btn-outline" onclick="importarDoCelular()">📱 Importar dos Contatos</button>
             </div>
             <h3>Lista de Clientes</h3>
             <div id="lista-clientes"></div>
@@ -392,6 +398,39 @@
                 <div id="lista-realizados"></div>
             </div>
         </section>
+
+        <!-- TELA 6: CONFIGURAÇÕES (Nova) -->
+        <section id="page-config" class="page">
+            <h2>⚙️ Configurações do Sistema</h2>
+            <div class="form-group">
+                <form id="form-configuracoes">
+                    <h3>Expediente de Atendimento</h3>
+                    <label>Início do Trabalho</label>
+                    <input type="time" id="cfg-inicio-trabalho" required>
+
+                    <label>Fim do Trabalho</label>
+                    <input type="time" id="cfg-fim-trabalho" required>
+
+                    <hr style="margin: 15px 0; border: 0; border-top: 1px dashed var(--border);">
+
+                    <h3>Intervalo / Almoço</h3>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="cfg-nao-tem-almoco" onchange="alternarCamposAlmoco()">
+                        <label for="cfg-nao-tem-almoco" style="margin-bottom:0; cursor:pointer;">Não ter horário de almoço</label>
+                    </div>
+
+                    <div id="div-campos-almoco">
+                        <label>Início do Almoço</label>
+                        <input type="time" id="cfg-inicio-almoco">
+
+                        <label>Fim do Almoço</label>
+                        <input type="time" id="cfg-fim-almoco">
+                    </div>
+
+                    <button type="submit" class="btn-block" style="background-color: var(--success); margin-top: 10px;">Salvar Configurações</button>
+                </form>
+            </div>
+        </section>
     </main>
 
     <nav class="nav-bottom">
@@ -400,6 +439,7 @@
         <div class="nav-item" onclick="mudarTela('page-clientes', this)"><icon>👤</icon>Clientes</div>
         <div class="nav-item" onclick="mudarTela('page-servicos', this)"><icon>🛠️</icon>Serviços</div>
         <div class="nav-item" onclick="mudarTela('page-financas', this)"><icon>💰</icon>Finanças</div>
+        <div class="nav-item" onclick="mudarTela('page-config', this)"><icon>⚙️</icon>Config</div>
     </nav>
 
     <script>
@@ -434,9 +474,20 @@
         
         let agendamentos = carregarDadosLocal('glow_agendamentos', []);
 
+        // Configurações Padrão (caso não existam salvas)
+        let configuracoes = carregarDadosLocal('glow_configuracoes', {
+            inicioTrabalho: "08:00",
+            fimTrabalho: "18:00",
+            naoTemAlmoco: false,
+            inicioAlmoco: "12:00",
+            fimAlmoco: "13:00"
+        });
+
         const formAgendamento = document.getElementById('form-agendamento');
         const formCliente = document.getElementById('form-cliente');
         const formServico = document.getElementById('form-servico');
+        const formConfiguracoes = document.getElementById('form-configuracoes');
+        
         const selectCliente = document.getElementById('select-cliente');
         const selectServico = document.getElementById('select-servico');
         const inputData = document.getElementById('data-agendamento');
@@ -463,54 +514,32 @@
             }
         }
 
-        // Inicialização
+        // Inicialização Geral
         atualizarSelectClientes();
         atualizarSelectServicos();
         atualizarStatusRede();
+        carregarCamposConfiguracoes();
 
-        // --- ASSISTENTE DE VOZ ---
-        function iniciarOuvinteVoz() {
-            if(!navigator.onLine) {
-                alert("O recurso de Comando de Voz precisa de conexão com a internet.");
-                return;
-            }
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return alert("Navegador incompatível com voz.");
-
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'pt-BR';
-            const btnVoz = document.getElementById('btn-voz-assistente');
-            const feedbackBox = document.getElementById('feedback-voz-box');
-
-            recognition.onstart = () => { btnVoz.classList.add('listening'); feedbackBox.innerHTML = "🔮 <strong>Ouvindo...</strong>"; };
-            recognition.onend = () => { btnVoz.classList.remove('listening'); };
-            recognition.onresult = (event) => {
-                const textoFalado = event.results[0][0].transcript.toLowerCase();
-                feedbackBox.innerHTML = `💬 <strong>Processado:</strong> "${textoFalado}"`;
-                processarComandoDeVoz(textoFalado);
-            };
-            recognition.start();
-        }
-
-        function processarComandoDeVoz(texto) {
-            if (texto.includes('cliente')) {
-                mudarTela('page-clientes', document.querySelectorAll('.nav-item')[2]);
-                let partes = texto.split('cliente')[1].split('telefone');
-                let nome = partes[0] ? partes[0].trim() : '';
-                let tel = partes[1] ? partes[1].replace(/\s+/g, '').trim() : '';
-                if(nome) {
-                    document.getElementById('nome-cliente').value = nome.charAt(0).toUpperCase() + nome.slice(1);
-                    document.getElementById('tel-cliente').value = tel;
+        // --- IMPORTADOR DE CONTATOS ---
+        async function importarDoCelular() {
+            if ('contacts' in navigator && 'ContactsManager' in window) {
+                const propriedades = ['name', 'tel'];
+                try {
+                    const contatosSelecionados = await navigator.contacts.select(propriedades, { multiple: false });
+                    if (contatosSelecionados.length > 0) {
+                        const contato = contatosSelecionados[0];
+                        const nomeParaPreencher = contato.name && contato.name[0] ? contato.name[0] : '';
+                        const telParaPreencher = contato.tel && contato.tel[0] ? contato.tel[0] : '';
+                        
+                        document.getElementById('nome-cliente').value = nomeParaPreencher;
+                        document.getElementById('tel-cliente').value = telParaPreencher;
+                        alert("Contato carregado! Basta clicar em 'Cadastrar Cliente' para salvar.");
+                    }
+                } catch (erro) {
+                    console.log("Busca de contatos cancelada: ", erro);
                 }
-            } else if (texto.includes('serviço') || texto.includes('servico')) {
-                mudarTela('page-servicos', document.querySelectorAll('.nav-item')[3]);
-            } else if (texto.includes('agendar') || texto.includes('agenda')) {
-                mudarTela('page-agenda', document.querySelectorAll('.nav-item')[0]);
-                let cEncontrada = clientes.find(c => texto.includes(c.nome.toLowerCase()));
-                if (cEncontrada) selectCliente.value = cEncontrada.nome;
-                let sEncontrado = servicos.find(s => texto.includes(s.nome.toLowerCase()));
-                if (sEncontrado) selectServico.value = sEncontrado.id;
-                gerarBotoesHorario();
+            } else {
+                alert("A busca automática de contatos não é suportada por este navegador ou aparelho.");
             }
         }
 
@@ -526,6 +555,7 @@
             if(pageId === 'page-clientes') atualizarListaClientes();
             if(pageId === 'page-servicos') atualizarListaServicos();
             if(pageId === 'page-financas') { mudarAbaFinancas('realizados'); atualizarFinancas(); }
+            if(pageId === 'page-config') carregarCamposConfiguracoes();
         }
 
         function mudarAbaFinancas(tipo) {
@@ -540,7 +570,51 @@
             }
         }
 
-        // --- SISTEMA DE HORÁRIOS ---
+        // --- GERENCIADOR DE CONFIGURAÇÕES ---
+        function carregarCamposConfiguracoes() {
+            document.getElementById('cfg-inicio-trabalho').value = configuracoes.inicioTrabalho;
+            document.getElementById('cfg-fim-trabalho').value = configuracoes.fimTrabalho;
+            document.getElementById('cfg-nao-tem-almoco').checked = configuracoes.naoTemAlmoco;
+            document.getElementById('cfg-inicio-almoco').value = configuracoes.inicioAlmoco || "";
+            document.getElementById('cfg-fim-almoco').value = configuracoes.fimAlmoco || "";
+            alternarCamposAlmoco();
+        }
+
+        function alternarCamposAlmoco() {
+            const naoTemAlmoco = document.getElementById('cfg-nao-tem-almoco').checked;
+            const divAlmoco = document.getElementById('div-campos-almoco');
+            if(naoTemAlmoco) {
+                divAlmoco.style.display = 'none';
+                document.getElementById('cfg-inicio-almoco').required = false;
+                document.getElementById('cfg-fim-almoco').required = false;
+            } else {
+                divAlmoco.style.display = 'block';
+                document.getElementById('cfg-inicio-almoco').required = true;
+                document.getElementById('cfg-fim-almoco').required = true;
+            }
+        }
+
+        formConfiguracoes.addEventListener('submit', function(e) {
+            e.preventDefault();
+            configuracoes.inicioTrabalho = document.getElementById('cfg-inicio-trabalho').value;
+            configuracoes.fimTrabalho = document.getElementById('cfg-fim-trabalho').value;
+            configuracoes.naoTemAlmoco = document.getElementById('cfg-nao-tem-almoco').checked;
+            
+            if(!configuracoes.naoTemAlmoco) {
+                configuracoes.inicioAlmoco = document.getElementById('cfg-inicio-almoco').value;
+                configuracoes.fimAlmoco = document.getElementById('cfg-fim-almoco').value;
+            } else {
+                configuracoes.inicioAlmoco = null;
+                configuracoes.fimAlmoco = null;
+            }
+
+            salvarDadosLocal('glow_configuracoes', configuracoes);
+            alert('Configurações de horários salvas com sucesso!');
+            mudarTela('page-agenda', document.querySelectorAll('.nav-item')[0]);
+        });
+
+
+        // --- SISTEMA DE HORÁRIOS BASEADO NAS CONFIGURAÇÕES (30 EM 30 MIN) ---
         function gerarBotoesHorario() {
             containerBotoesHorarios.innerHTML = '';
             inputHorarioOculto.value = '';
@@ -553,8 +627,12 @@
             if(!servicoEncontrado) return;
             const tempoServicoMs = servicoEncontrado.tempo * 60 * 1000;
 
-            let slotAtualTimestamp = new Date(`${dataSelecionada}T08:00`).getTime();
-            let fimDiaTimestamp = new Date(`${dataSelecionada}T18:00`).getTime();
+            // Define os limites com base na configuração da usuária
+            let slotAtualTimestamp = new Date(`${dataSelecionada}T${configuracoes.inicioTrabalho}`).getTime();
+            let fimDiaTimestamp = new Date(`${dataSelecionada}T${configuracoes.fimTrabalho}`).getTime();
+            
+            let inicioAlmocoTimestamp = configuracoes.naoTemAlmoco ? 0 : new Date(`${dataSelecionada}T${configuracoes.inicioAlmoco}`).getTime();
+            let fimAlmocoTimestamp = configuracoes.naoTemAlmoco ? 0 : new Date(`${dataSelecionada}T${configuracoes.fimAlmoco}`).getTime();
 
             const agendamentosDoDia = agendamentos.filter(ag => {
                 return new Date(ag.inicioTimestamp).toLocaleDateString('pt-BR') === new Date(`${dataSelecionada}T00:00:00`).toLocaleDateString('pt-BR');
@@ -563,10 +641,26 @@
             while (slotAtualTimestamp < fimDiaTimestamp) {
                 const horaFimProposta = slotAtualTimestamp + tempoServicoMs;
                 let colidiu = false;
-                for(let i = 0; i < agendamentosDoDia.length; i++) {
-                    let ag = agendamentosDoDia[i];
-                    if (slotAtualTimestamp < ag.fimTimestamp && horaFimProposta > ag.inicioTimestamp) { colidiu = true; break; }
+
+                // 1. Verifica colisão com o horário de almoço (se ativo)
+                if (!configuracoes.naoTemAlmoco) {
+                    if (slotAtualTimestamp < fimAlmocoTimestamp && horaFimProposta > inicioAlmocoTimestamp) {
+                        colidiu = true;
+                    }
                 }
+
+                // 2. Verifica se colide com outros agendamentos marcados
+                if (!colidiu) {
+                    for(let i = 0; i < agendamentosDoDia.length; i++) {
+                        let ag = agendamentosDoDia[i];
+                        if (slotAtualTimestamp < ag.fimTimestamp && horaFimProposta > ag.inicioTimestamp) { 
+                            colidiu = true; 
+                            break; 
+                        }
+                    }
+                }
+
+                // Se o horário estiver totalmente livre e couber dentro do expediente, cria o botão
                 if (!colidiu && (horaFimProposta <= fimDiaTimestamp)) {
                     const textoHoraSlot = new Date(slotAtualTimestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
                     const botao = document.createElement('div');
@@ -579,8 +673,10 @@
                         inputHorarioOculto.value = botao.dataset.timestamp;
                     };
                     containerBotoesHorarios.appendChild(botao);
-                    slotAtualTimestamp += tempoServicoMs;
-                } else { slotAtualTimestamp += (15 * 60 * 1000); }
+                }
+                
+                // Pula rigidamente de 30 em 30 minutos
+                slotAtualTimestamp += (30 * 60 * 1000);
             }
         }
 
@@ -650,7 +746,7 @@
             }
         }
 
-        // --- GERENCIAR CLIENTES (CADASTRAR E APAGAR) ---
+        // --- GERENCIAR CLIENTES ---
         formCliente.addEventListener('submit', function(e) {
             e.preventDefault();
             const nome = document.getElementById('nome-cliente').value.trim();
@@ -687,7 +783,7 @@
             }
         }
 
-        // --- GERENCIAR SERVIÇOS (CADASTRAR E APAGAR) ---
+        // --- GERENCIAR SERVIÇOS ---
         formServico.addEventListener('submit', function(e) {
             e.preventDefault();
             const nome = document.getElementById('nome-servico').value.trim();
