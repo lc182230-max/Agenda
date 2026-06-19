@@ -348,7 +348,7 @@
                     <input type="tel" id="tel-cliente" placeholder="Ex: (11) 99999-9999" required>
                     <button type="submit" class="btn-block" style="background-color: #2ed573;">Cadastrar Cliente</button>
                 </form>
-                <button type="button" class="btn-outline" onclick="importarDoCelular()">📱 Importar dos Contatos</button>
+                <button type="button" class="btn-outline" onclick="solicitarPermissaoEImportar()">📱 Importar dos Contatos</button>
             </div>
             <h3>Lista de Clientes</h3>
             <div id="lista-clientes"></div>
@@ -399,7 +399,7 @@
             </div>
         </section>
 
-        <!-- TELA 6: CONFIGURAÇÕES (Nova) -->
+        <!-- TELA 6: CONFIGURAÇÕES -->
         <section id="page-config" class="page">
             <h2>⚙️ Configurações do Sistema</h2>
             <div class="form-group">
@@ -474,7 +474,6 @@
         
         let agendamentos = carregarDadosLocal('glow_agendamentos', []);
 
-        // Configurações Padrão (caso não existam salvas)
         let configuracoes = carregarDadosLocal('glow_configuracoes', {
             inicioTrabalho: "08:00",
             fimTrabalho: "18:00",
@@ -520,27 +519,72 @@
         atualizarStatusRede();
         carregarCamposConfiguracoes();
 
-        // --- IMPORTADOR DE CONTATOS ---
-        async function importarDoCelular() {
+        // --- IMPORTADOR DE CONTATOS COM PEDIDO DE PERMISSÃO EXPRESSO ---
+        async function solicitarPermissaoEImportar() {
+            // Caixa de diálogo de permissão nativa para engajar a ação do usuário
+            const aceitouPermissao = confirm("GlowAgenda Pro precisa de permissão para ler seus contatos e salvá-los no app. Deseja abrir sua lista de contatos do celular?");
+            
+            if (!aceitouPermissao) {
+                return; // O usuário negou a intenção
+            }
+
+            // Verifica se o navegador possui o gerenciador nativo de contatos
             if ('contacts' in navigator && 'ContactsManager' in window) {
                 const propriedades = ['name', 'tel'];
                 try {
                     const contatosSelecionados = await navigator.contacts.select(propriedades, { multiple: false });
-                    if (contatosSelecionados.length > 0) {
+                    if (contatosSelecionados && contatosSelecionados.length > 0) {
                         const contato = contatosSelecionados[0];
-                        const nomeParaPreencher = contato.name && contato.name[0] ? contato.name[0] : '';
-                        const telParaPreencher = contato.tel && contato.tel[0] ? contato.tel[0] : '';
+                        const nomeParaPreencher = contato.name && contato.name[0] ? contato.name[0].trim() : '';
+                        const telParaPreencher = contato.tel && contato.tel[0] ? contato.tel[0].trim() : '';
                         
-                        document.getElementById('nome-cliente').value = nomeParaPreencher;
-                        document.getElementById('tel-cliente').value = telParaPreencher;
-                        alert("Contato carregado! Basta clicar em 'Cadastrar Cliente' para salvar.");
+                        if (nomeParaPreencher === '') {
+                            alert("Não foi possível importar: contato sem nome.");
+                            return;
+                        }
+
+                        salvarNovaClienteDireto(nomeParaPreencher, telParaPreencher);
                     }
                 } catch (erro) {
-                    console.log("Busca de contatos cancelada: ", erro);
+                    console.log("Abertura da agenda cancelada ou bloqueada: ", erro);
+                    executarFallbackImportacao();
                 }
             } else {
-                alert("A busca automática de contatos não é suportada por este navegador ou aparelho.");
+                // Caso o aparelho ou navegador bloqueie por segurança/incompatibilidade
+                executarFallbackImportacao();
             }
+        }
+
+        // Caso o sistema não consiga puxar a lista de contatos nativa do celular (fallback seguro)
+        function ejecutarFallbackImportacao() {
+            const entradaRapida = prompt("Seu navegador ou aparelho bloqueou o acesso direto à agenda de contatos.\n\nPara facilitar, digite ou cole o NOME e o TELEFONE separados por uma vírgula (Ex: Ana Souza, 11999999999):");
+            
+            if (entradaRapida) {
+                const partes = entradaRapida.split(',');
+                const nome = partes[0] ? partes[0].trim() : '';
+                const tel = partes[1] ? partes[1].trim() : '';
+                
+                if (nome) {
+                    salvarNovaClienteDireto(nome, tel);
+                } else {
+                    alert("Nome inválido. Cadastro não realizado.");
+                }
+            }
+        }
+
+        // Função auxiliar que executa o salvamento imediato e automático
+        function salvarNovaClienteDireto(nome, telefone) {
+            clientes.push({
+                id: Date.now(),
+                nome: nome,
+                telefone: telefone || 'Sem Telefone'
+            });
+
+            salvarDadosLocal('glow_clientes', clientes);
+            atualizarListaClientes();
+            atualizarSelectClientes();
+            
+            alert(`✅ Cliente "${nome}" importada e salva automaticamente!`);
         }
 
         // --- NAVEGAÇÃO E TELAS ---
@@ -613,8 +657,7 @@
             mudarTela('page-agenda', document.querySelectorAll('.nav-item')[0]);
         });
 
-
-        // --- SISTEMA DE HORÁRIOS BASEADO NAS CONFIGURAÇÕES (30 EM 30 MIN) ---
+        // --- SISTEMA DE HORÁRIOS BASEADO NAS CONFIGURAÇÕES ---
         function gerarBotoesHorario() {
             containerBotoesHorarios.innerHTML = '';
             inputHorarioOculto.value = '';
@@ -627,7 +670,6 @@
             if(!servicoEncontrado) return;
             const tempoServicoMs = servicoEncontrado.tempo * 60 * 1000;
 
-            // Define os limites com base na configuração da usuária
             let slotAtualTimestamp = new Date(`${dataSelecionada}T${configuracoes.inicioTrabalho}`).getTime();
             let fimDiaTimestamp = new Date(`${dataSelecionada}T${configuracoes.fimTrabalho}`).getTime();
             
@@ -642,14 +684,12 @@
                 const horaFimProposta = slotAtualTimestamp + tempoServicoMs;
                 let colidiu = false;
 
-                // 1. Verifica colisão com o horário de almoço (se ativo)
                 if (!configuracoes.naoTemAlmoco) {
                     if (slotAtualTimestamp < fimAlmocoTimestamp && horaFimProposta > inicioAlmocoTimestamp) {
                         colidiu = true;
                     }
                 }
 
-                // 2. Verifica se colide com outros agendamentos marcados
                 if (!colidiu) {
                     for(let i = 0; i < agendamentosDoDia.length; i++) {
                         let ag = agendamentosDoDia[i];
@@ -660,7 +700,6 @@
                     }
                 }
 
-                // Se o horário estiver totalmente livre e couber dentro do expediente, cria o botão
                 if (!colidiu && (horaFimProposta <= fimDiaTimestamp)) {
                     const textoHoraSlot = new Date(slotAtualTimestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
                     const botao = document.createElement('div');
@@ -675,7 +714,6 @@
                     containerBotoesHorarios.appendChild(botao);
                 }
                 
-                // Pula rigidamente de 30 em 30 minutos
                 slotAtualTimestamp += (30 * 60 * 1000);
             }
         }
@@ -867,3 +905,4 @@
     </script>
 </body>
 </html>
+
