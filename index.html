@@ -153,21 +153,28 @@
             transform: scale(0.98);
         }
 
-        .btn-outline {
-            width: 100%;
+        .btn-outline-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-outline-atone {
+            flex: 1;
             background-color: transparent;
             color: #00d2d3;
             border: 2px solid #00d2d3;
-            padding: 12px;
+            padding: 12px 5px;
             border-radius: 10px;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            text-align: center;
+            text-decoration: none;
             transition: 0.2s;
         }
 
-        .btn-outline:active {
+        .btn-outline-atone:active {
             background-color: rgba(0, 210, 211, 0.1);
         }
 
@@ -305,6 +312,7 @@
     </header>
 
     <main>
+        <!-- TELA 1: AGENDAR (Home) -->
         <section id="page-agenda" class="page active">
             <h2>Novo Agendamento</h2>
             <div class="tip-box">
@@ -330,11 +338,13 @@
             </div>
         </section>
 
+        <!-- TELA 2: HORÁRIOS MARCADOS -->
         <section id="page-horarios" class="page">
             <h2>📅 Agenda (Pendentes / Em Andamento)</h2>
             <div id="lista-agendamentos-abas"></div>
         </section>
 
+        <!-- TELA 3: CLIENTES -->
         <section id="page-clientes" class="page">
             <h2>Gerenciar Clientes</h2>
             <div class="form-group">
@@ -345,12 +355,16 @@
                     <input type="tel" id="tel-cliente" placeholder="Ex: (11) 99999-9999" required>
                     <button type="submit" class="btn-block" style="background-color: #2ed573;">Cadastrar Cliente</button>
                 </form>
-                <button type="button" class="btn-outline" onclick="solicitarPermissaoEImportar()">📱 Importar dos Contatos</button>
+                
+                <div class="btn-outline-container">
+                    <button type="button" class="btn-block" style="background-color: transparent; color: #00d2d3; border: 2px solid #00d2d3;" onclick="puxarContatoDoCelular()">📱 Importar dos Contatos</button>
+                </div>
             </div>
             <h3>Lista de Clientes</h3>
             <div id="lista-clientes"></div>
         </section>
 
+        <!-- TELA 4: SERVIÇOS -->
         <section id="page-servicos" class="page">
             <h2>Gerenciar Serviços</h2>
             <div class="form-group">
@@ -368,6 +382,7 @@
             <div id="lista-servicos"></div>
         </section>
 
+        <!-- TELA 5: FINANÇAS -->
         <section id="page-financas" class="page">
             <h2>Controle Financeiro</h2>
             <div class="sub-nav">
@@ -394,6 +409,7 @@
             </div>
         </section>
 
+        <!-- TELA 6: CONFIGURAÇÕES -->
         <section id="page-config" class="page">
             <h2>⚙️ Configurações do Sistema</h2>
             <div class="form-group">
@@ -513,51 +529,29 @@
         atualizarStatusRede();
         carregarCamposConfiguracoes();
 
-        // --- IMPORTADOR DE CONTATOS ATUALIZADO (100% COMPATÍVEL E AUTOMÁTICO) ---
-        async function solicitarPermissaoEImportar() {
-            const aceitouPermissao = confirm("Deseja importar uma cliente usando a colagem rápida? (Opção mais segura contra bloqueios de navegadores)");
-            
-            if (!aceitouPermissao) return;
-
-            // Prompt direto que contorna as restrições nativas de segurança mobile
-            const entradaRapida = prompt("Copie o contato na sua agenda ou WhatsApp e cole aqui embaixo.\n\nExemplo aceito:\nAna Souza, 11999999999\nou apenas o Nome da cliente:");
-            
-            if (entradaRapida) {
-                let nome = entradaRapida;
-                let tel = 'Sem Telefone';
-
-                // Realiza o tratamento inteligente separando por vírgula ou hífen
-                if (entradaRapida.includes(',')) {
-                    const partes = entradaRapida.split(',');
-                    nome = partes[0].trim();
-                    tel = partes[1].trim();
-                } else if (entradaRapida.includes('-')) {
-                    const partes = entradaRapida.split('-');
-                    nome = partes[0].trim();
-                    tel = partes[1].trim();
+        // --- SISTEMA DE IMPORTAÇÃO DA AGENDA DO CELULAR ---
+        async function puxarContatoDoCelular() {
+            if ('contacts' in navigator && 'ContactsManager' in window) {
+                const propriedades = ['name', 'tel'];
+                try {
+                    const contatosSelecionados = await navigator.contacts.select(propriedades, { multiple: false });
+                    
+                    if (contatosSelecionados.length > 0) {
+                        const contato = contatosSelecionados[0];
+                        const nomeDaCliente = contato.name && contato.name[0] ? contato.name[0] : '';
+                        const telefoneDaCliente = contato.tel && contato.tel[0] ? contato.tel[0] : '';
+                        
+                        if (nomeDaCliente) document.getElementById('nome-cliente').value = nomeDaCliente;
+                        if (telefoneDaCliente) document.getElementById('tel-cliente').value = telefoneDaCliente;
+                        
+                        alert("Contato carregado! Agora basta clicar em 'Cadastrar Cliente'.");
+                    }
+                } catch (erro) {
+                    console.log("Seleção cancelada ou falhou: ", erro);
                 }
-
-                if (nome.trim() !== '') {
-                    salvarNovaClienteDireto(nome, tel);
-                } else {
-                    alert("Não foi possível identificar o nome da cliente.");
-                }
+            } else {
+                alert("O navegador do seu aparelho bloqueia o acesso direto à agenda por segurança. Digite manualmente os dados nos campos acima.");
             }
-        }
-
-        // Executa a injeção local e síncrona no banco off-line
-        function salvarNovaClienteDireto(nome, telefone) {
-            clientes.push({
-                id: Date.now(),
-                nome: nome,
-                telefone: telefone || 'Sem Telefone'
-            });
-
-            salvarDadosLocal('glow_clientes', clientes);
-            atualizarListaClientes();
-            atualizarSelectClientes();
-            
-            alert(`✅ Cliente "${nome}" importada e salva automaticamente!`);
         }
 
         // --- NAVEGAÇÃO E TELAS ---
@@ -878,3 +872,4 @@
     </script>
 </body>
 </html>
+
